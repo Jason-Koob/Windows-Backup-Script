@@ -51,15 +51,30 @@ if (Get-PSDrive -Name $targetDrive -ErrorAction SilentlyContinue) {
     exit
 }
 
+# Validate that the dest drive exists
+if (Get-PSDrive -Name $destDrive -ErrorAction SilentlyContinue) {
+    Write-Output "Drive $destDrive exists."
+} else {
+    Write-Output "Drive $destDrive does not exist."
+    exit
+}
+
+# Get drive information for calculations
+$targetDriveInfo = Get-PSDrive $targetDrive
+$destDriveInfo = Get-Volume -DriveLetter $destDrive
+$backupSizeGB = [math]::Round($targetDriveInfo.Used / 1GB, 2)
+
 # Show estimated backup size
 Get-PSDrive $targetDrive | Format-Table `
-  @{Label = "Drive Letter"; Expression = { $_.Name } }, `
+  @{Label = "Target Drive Letter"; Expression = { $_.Name + ":" } }, `
   @{Label = "Backup Size (GB)"; Expression = { [math]::Round($_.Used / 1GB, 2) } }
 
 # Show destination drive stats
 Get-Volume -DriveLetter $destDrive | Format-Table `
+  @{Label = "Destination Drive Letter"; Expression = { $_.DriveLetter + ":" } }, `
   @{Label = "Available (GB)"; Expression = { [math]::Round($_.SizeRemaining / 1GB, 2) } }, `
-  @{Label = "Total (GB)"; Expression = { [math]::Round($_.Size / 1GB, 2) } }
+  @{Label = "Total (GB)"; Expression = { [math]::Round($_.Size / 1GB, 2) } }, `
+  @{Label = "Space After Backup (GB)"; Expression = { [math]::Round(($_.Size - $backupSizeGB * 1GB) / 1GB, 2) } }
 
 # Confirmation
 if (-not $confirm) {
